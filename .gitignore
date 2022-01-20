@@ -1,4 +1,6 @@
-# Logs
+
+# VS Code
+.vscode/# Logs
 logs
 *.log
 npm-debug.log*
@@ -74,3 +76,6 @@ typings/
 
 # FuseBox cache
 .fusebox/
+
+# VS Code
+.vscode/
