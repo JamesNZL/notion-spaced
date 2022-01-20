@@ -110,7 +110,7 @@ async function createPage(parameters: CreatePageParameters): Promise<void | Crea
 					repeats.flat(1)
 						.forEach(repeat => {
 							if ('properties' in repeat) {
-								const repeatName = ('title' in repeat.properties.Name) ? repeat.properties.Name.title[0]?.plain_text : 'Unknown Title';
+								const repeatName = ('title' in repeat.properties.Name) ? resolvePageName(repeat) : 'Unknown Title';
 								const repeatIcon = (repeat.icon !== null && 'emoji' in repeat.icon) ? repeat.icon.emoji : null;
 
 								Object.entries(repeat.properties)
