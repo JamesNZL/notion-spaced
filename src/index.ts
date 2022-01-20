@@ -177,17 +177,3 @@ async function createPage(parameters: CreatePageParameters): Promise<void | Crea
 		}
 	}
 })();
-
-async function clearCalendar(databaseId: string) {
-	async function deleteBlock(blockId: string) {
-		await notion.blocks.delete({ block_id: blockId });
-	}
-
-	const calendar = await queryDatabase(databaseId);
-
-	if (calendar?.results?.length) {
-		calendar.results.forEach(page => deleteBlock(page.id));
-	}
-}
-
-// clearCalendar('7d9e3260ef3f4005a586ecb0c423a9f1');
