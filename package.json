@@ -5,6 +5,7 @@
   },
   "dependencies": {
     "@notionhq/client": "^0.4.12",
+    "dateformat": "^5.0.2",
     "dotenv": "^14.2.0"
   }
 }
