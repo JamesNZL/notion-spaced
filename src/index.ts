@@ -21,7 +21,7 @@ interface Constants {
 }
 
 const CONSTANTS: Constants = {
-	CALENDAR_TITLE: 'To Repeat',
+	CALENDAR_TITLE: 'Repetition Calendar',
 	REPEATS: {
 		'1st rep': '1️⃣',
 		'2nd rep': '2️⃣',
@@ -176,8 +176,6 @@ async function createPage(parameters: CreatePageParameters): Promise<void | Crea
 			}
 		}
 	}
-
-	console.log('Done!');
 })();
 
 async function clearCalendar(databaseId: string) {

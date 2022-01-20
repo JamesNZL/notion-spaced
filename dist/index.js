@@ -27,7 +27,7 @@ const dotenv = __importStar(require("dotenv"));
 dotenv.config();
 const dateformat_1 = __importDefault(require("dateformat"));
 const CONSTANTS = {
-    CALENDAR_TITLE: 'To Repeat',
+    CALENDAR_TITLE: 'Repetition Calendar',
     REPEATS: {
         '1st rep': '1️⃣',
         '2nd rep': '2️⃣',
@@ -156,7 +156,6 @@ async function createPage(parameters) {
             }
         }
     }
-    console.log('Done!');
 })();
 async function clearCalendar(databaseId) {
     async function deleteBlock(blockId) {
