@@ -28,16 +28,32 @@ dotenv.config();
 const moment_1 = __importDefault(require("moment"));
 const CONSTANTS = {
     CALENDAR_TITLE: 'Repetition Calendar',
+    DATE_FORMAT: 'YYYY-MM-DD',
     REPEATS: {
-        '1st rep': '1️⃣',
-        '2nd rep': '2️⃣',
-        '3rd rep': '3️⃣',
-        '4th rep': '4️⃣',
+        '1st rep': {
+            emoji: '1️⃣',
+            momentOffset: { days: 1 },
+        },
+        '2nd rep': {
+            emoji: '2️⃣',
+            momentOffset: { weeks: 1 },
+        },
+        '3rd rep': {
+            emoji: '3️⃣',
+            momentOffset: { weeks: 2 },
+        },
+        '4th rep': {
+            emoji: '4️⃣',
+            momentOffset: { months: 1 },
+        },
     },
 };
 const notion = new client_1.Client({ auth: process.env.NOTION_KEY });
 function resolvePageName(page) {
     return ('properties' in page && 'title' in page.properties.Name) ? page.properties.Name.title.map(({ plain_text }) => plain_text).join('') : '';
+}
+function getRepeatDate(createdTime, momentOffset) {
+    return (0, moment_1.default)(createdTime).add(momentOffset).format(CONSTANTS.DATE_FORMAT);
 }
 function handleError(error) {
     const type = ((0, client_1.isNotionClientError)(error)) ? 'NOTION_ERROR' : 'UNKNOWN_ERROR';
@@ -96,59 +112,53 @@ async function createPage(parameters) {
                     // Flatten the array to remove boards with no repeats
                     repeats.flat(1)
                         .forEach(repeat => {
-                        if ('properties' in repeat) {
+                        if ('properties' in repeat && 'created_time' in repeat) {
                             const repeatName = ('title' in repeat.properties.Name) ? resolvePageName(repeat) : 'Unknown Title';
                             const repeatIcon = (repeat.icon !== null && 'emoji' in repeat.icon) ? repeat.icon.emoji : null;
-                            Object.entries(repeat.properties)
-                                .filter(([key, value]) => Object.keys(CONSTANTS.REPEATS).includes(key) && value.type === 'formula')
-                                .forEach(async ([key, value]) => {
-                                if (value.type === 'formula' && 'string' in value.formula) {
-                                    const repeatDate = value?.formula?.string;
-                                    if (repeatDate) {
-                                        const pageTitle = `${CONSTANTS.REPEATS[key]} ${repeatName} ${key}`;
-                                        const pageDate = (0, moment_1.default)(repeatDate).format('YYYY-MM-DD');
-                                        if (calendarPages.results.some(page => 'properties' in page && resolvePageName(page) === pageTitle && 'date' in page.properties.Date && page.properties.Date.date?.start === pageDate))
-                                            return;
-                                        const parent = {
-                                            type: 'database_id',
-                                            database_id: calendarId,
-                                        };
-                                        const properties = {
-                                            Name: {
-                                                title: [
-                                                    {
-                                                        text: {
-                                                            content: `${CONSTANTS.REPEATS[key]} `,
-                                                        },
-                                                    },
-                                                    {
-                                                        mention: {
-                                                            page: {
-                                                                id: repeat.id,
-                                                            },
-                                                        },
-                                                    },
-                                                    {
-                                                        text: {
-                                                            content: ` ${key}`,
-                                                        },
-                                                    },
-                                                ],
-                                            },
-                                            Date: {
-                                                date: {
-                                                    start: pageDate,
+                            Object.entries(CONSTANTS.REPEATS)
+                                .forEach(async ([repeatSerial, repeatObject]) => {
+                                const pageTitle = `${CONSTANTS.REPEATS[repeatSerial].emoji} ${repeatName} ${repeatSerial}`;
+                                const pageDate = getRepeatDate(repeat.created_time, repeatObject.momentOffset);
+                                if (calendarPages.results.some(page => 'properties' in page && resolvePageName(page) === pageTitle && 'date' in page.properties.Date && page.properties.Date.date?.start === pageDate))
+                                    return;
+                                const parent = {
+                                    type: 'database_id',
+                                    database_id: calendarId,
+                                };
+                                const properties = {
+                                    Name: {
+                                        title: [
+                                            {
+                                                text: {
+                                                    content: `${CONSTANTS.REPEATS[repeatSerial].emoji} `,
                                                 },
                                             },
-                                        };
-                                        const icon = {
-                                            type: 'emoji',
-                                            emoji: repeatIcon || CONSTANTS.REPEATS[key],
-                                        };
-                                        // await createPage({ parent, properties, icon });
-                                        console.log(`Created page ${pageTitle}`);
-                                    }
-                                }
+                                            {
+                                                mention: {
+                                                    page: {
+                                                        id: repeat.id,
+                                                    },
+                                                },
+                                            },
+                                            {
+                                                text: {
+                                                    content: ` ${repeatSerial}`,
+                                                },
+                                            },
+                                        ],
+                                    },
+                                    Date: {
+                                        date: {
+                                            start: pageDate,
+                                        },
+                                    },
+                                };
+                                const icon = {
+                                    type: 'emoji',
+                                    emoji: repeatIcon || CONSTANTS.REPEATS[repeatSerial].emoji,
+                                };
+                                await createPage({ parent, properties, icon });
+                                console.log(`Created page ${pageTitle}`);
                             });
                         }
                     });
