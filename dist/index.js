@@ -25,7 +25,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const client_1 = require("@notionhq/client");
 const dotenv = __importStar(require("dotenv"));
 dotenv.config();
-const dateformat_1 = __importDefault(require("dateformat"));
+const moment_1 = __importDefault(require("moment"));
 const CONSTANTS = {
     CALENDAR_TITLE: 'Repetition Calendar',
     REPEATS: {
@@ -106,7 +106,7 @@ async function createPage(parameters) {
                                     const repeatDate = value?.formula?.string;
                                     if (repeatDate) {
                                         const pageTitle = `${CONSTANTS.REPEATS[key]} ${repeatName} ${key}`;
-                                        const pageDate = (0, dateformat_1.default)(repeatDate, 'isoDate');
+                                        const pageDate = (0, moment_1.default)(repeatDate).format('YYYY-MM-DD');
                                         if (calendarPages.results.some(page => 'properties' in page && resolvePageName(page) === pageTitle && 'date' in page.properties.Date && page.properties.Date.date?.start === pageDate))
                                             return;
                                         const parent = {
@@ -145,7 +145,7 @@ async function createPage(parameters) {
                                             type: 'emoji',
                                             emoji: repeatIcon || CONSTANTS.REPEATS[key],
                                         };
-                                        await createPage({ parent, properties, icon });
+                                        // await createPage({ parent, properties, icon });
                                         console.log(`Created page ${pageTitle}`);
                                     }
                                 }

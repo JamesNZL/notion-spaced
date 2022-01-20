@@ -4,7 +4,7 @@ import { CreatePageParameters, CreatePageResponse, ListBlockChildrenResponse, Qu
 import * as dotenv from 'dotenv';
 dotenv.config();
 
-import dateFormat from 'dateformat';
+import moment from 'moment';
 
 type ArrayElement<ArrayType extends readonly unknown[]> = ArrayType extends readonly (infer ElementType)[] ? ElementType : never;
 
@@ -121,7 +121,7 @@ async function createPage(parameters: CreatePageParameters): Promise<void | Crea
 
 											if (repeatDate) {
 												const pageTitle = `${CONSTANTS.REPEATS[<RepeatSerial>key]} ${repeatName} ${key}`;
-												const pageDate = dateFormat(repeatDate, 'isoDate');
+												const pageDate = moment(repeatDate).format('YYYY-MM-DD');
 
 												if (calendarPages.results.some(page => 'properties' in page && resolvePageName(page) === pageTitle && 'date' in page.properties.Date && page.properties.Date.date?.start === pageDate)) return;
 
@@ -164,7 +164,7 @@ async function createPage(parameters: CreatePageParameters): Promise<void | Crea
 													emoji: repeatIcon || CONSTANTS.REPEATS[<RepeatSerial>key],
 												};
 
-												await createPage({ parent, properties, icon });
+												// await createPage({ parent, properties, icon });
 
 												console.log(`Created page ${pageTitle}`);
 											}
