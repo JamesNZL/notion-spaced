@@ -22,12 +22,14 @@ type Repeats = {
 interface Constants {
 	CALENDAR_TITLE: string;
 	DATE_FORMAT: string;
+	CLASS_PROPERTY_NAME: string;
 	REPEATS: Repeats;
 }
 
 const CONSTANTS: Constants = {
 	CALENDAR_TITLE: 'Repetition Calendar',
 	DATE_FORMAT: 'YYYY-MM-DD',
+	CLASS_PROPERTY_NAME: 'Class',
 	REPEATS: {
 		'1st rep': {
 			emoji: '1️⃣',
@@ -121,7 +123,7 @@ function calendarHasPage(calendarPages: QueryDatabaseResponse, { pageTitle, page
 	return calendarPages.results.some(page => 'properties' in page && resolvePageName(page) === pageTitle && 'date' in page.properties.Date && page.properties.Date.date?.start === pageDate);
 }
 
-async function createCalendarPage(calendarId: string, repeatSerial: string, repeatId: string, repeatIcon: EmojiRequest | null, pageDate: string): Promise<void | CreatePageResponse> {
+async function createCalendarPage(calendarId: string, repeatSerial: string, repeatId: string, repeatIcon: EmojiRequest | null, repeatClass: string, pageDate: string): Promise<void | CreatePageResponse> {
 	// Construct the parent object for the CreatePageParameters
 	const parent: CreatePageParameters['parent'] = {
 		type: 'database_id',
@@ -161,6 +163,14 @@ async function createCalendarPage(calendarId: string, repeatSerial: string, repe
 			},
 		},
 	};
+
+	if (repeatClass) {
+		properties[CONSTANTS.CLASS_PROPERTY_NAME] = {
+			select: {
+				name: repeatClass,
+			},
+		};
+	}
 
 	// Construct the icon object
 	const icon: CreatePageParameters['icon'] = {
@@ -204,6 +214,7 @@ async function updateCalendar(parentBlockId?: string): Promise<void> {
 							// Resolve the repeat's name and icon
 							const repeatName = ('title' in repeat.properties.Name) ? resolvePageName(repeat) : 'Unknown Title';
 							const repeatIcon = (repeat.icon !== null && 'emoji' in repeat.icon) ? repeat.icon.emoji : null;
+							const repeatClass = (CONSTANTS.CLASS_PROPERTY_NAME in repeat.properties && 'select' in repeat.properties?.[CONSTANTS.CLASS_PROPERTY_NAME]) ? repeat.properties?.[CONSTANTS.CLASS_PROPERTY_NAME]?.select?.name : null;
 
 							// Iterate through each repeat serial
 							Object.entries(CONSTANTS.REPEATS)
@@ -217,7 +228,7 @@ async function updateCalendar(parentBlockId?: string): Promise<void> {
 									if (calendarHasPage(calendarPages, { pageTitle, pageDate })) return;
 
 									// Otherwise, create the calendar page
-									else createCalendarPage(calendarId, repeatSerial, repeat.id, repeatIcon, pageDate);
+									else createCalendarPage(calendarId, repeatSerial, repeat.id, repeatIcon, repeatClass, pageDate);
 								});
 						}
 					});

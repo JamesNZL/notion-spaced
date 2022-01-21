@@ -29,6 +29,7 @@ const moment_1 = __importDefault(require("moment"));
 const CONSTANTS = {
     CALENDAR_TITLE: 'Repetition Calendar',
     DATE_FORMAT: 'YYYY-MM-DD',
+    CLASS_PROPERTY_NAME: 'Class',
     REPEATS: {
         '1st rep': {
             emoji: '1️⃣',
@@ -104,7 +105,7 @@ async function resolveRepeatsFromBoards(boardIds) {
 function calendarHasPage(calendarPages, { pageTitle, pageDate }) {
     return calendarPages.results.some(page => 'properties' in page && resolvePageName(page) === pageTitle && 'date' in page.properties.Date && page.properties.Date.date?.start === pageDate);
 }
-async function createCalendarPage(calendarId, repeatSerial, repeatId, repeatIcon, pageDate) {
+async function createCalendarPage(calendarId, repeatSerial, repeatId, repeatIcon, repeatClass, pageDate) {
     // Construct the parent object for the CreatePageParameters
     const parent = {
         type: 'database_id',
@@ -143,6 +144,13 @@ async function createCalendarPage(calendarId, repeatSerial, repeatId, repeatIcon
             },
         },
     };
+    if (repeatClass) {
+        properties[CONSTANTS.CLASS_PROPERTY_NAME] = {
+            select: {
+                name: repeatClass,
+            },
+        };
+    }
     // Construct the icon object
     const icon = {
         type: 'emoji',
@@ -178,6 +186,7 @@ async function updateCalendar(parentBlockId) {
                             // Resolve the repeat's name and icon
                             const repeatName = ('title' in repeat.properties.Name) ? resolvePageName(repeat) : 'Unknown Title';
                             const repeatIcon = (repeat.icon !== null && 'emoji' in repeat.icon) ? repeat.icon.emoji : null;
+                            const repeatClass = (CONSTANTS.CLASS_PROPERTY_NAME in repeat.properties && 'select' in repeat.properties?.[CONSTANTS.CLASS_PROPERTY_NAME]) ? repeat.properties?.[CONSTANTS.CLASS_PROPERTY_NAME]?.select?.name : null;
                             // Iterate through each repeat serial
                             Object.entries(CONSTANTS.REPEATS)
                                 .forEach(([repeatSerial, repeatObject]) => {
@@ -190,7 +199,7 @@ async function updateCalendar(parentBlockId) {
                                     return;
                                 // Otherwise, create the calendar page
                                 else
-                                    createCalendarPage(calendarId, repeatSerial, repeat.id, repeatIcon, pageDate);
+                                    createCalendarPage(calendarId, repeatSerial, repeat.id, repeatIcon, repeatClass, pageDate);
                             });
                         }
                     });
