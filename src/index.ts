@@ -119,11 +119,24 @@ async function resolveRepeatsFromBoards(boardIds: string[]): Promise<QueryDataba
 	return repeats.flat(1);
 }
 
+function getClassTag(repeat: ArrayElement<QueryDatabaseResponse['results']>): string | undefined {
+	if ('properties' in repeat && CONSTANTS.CLASS_PROPERTY_NAME in repeat.properties) {
+		// Extract the class property from the repeat page
+		const classProperty = repeat.properties[CONSTANTS.CLASS_PROPERTY_NAME];
+
+		// If the class property is a select property, return its name
+		if ('select' in classProperty) return classProperty.select?.name;
+	}
+
+	// Return undefined if no tag was found
+	return undefined;
+}
+
 function calendarHasPage(calendarPages: QueryDatabaseResponse, { pageTitle, pageDate }: { pageTitle: string, pageDate: string; }): boolean {
 	return calendarPages.results.some(page => 'properties' in page && resolvePageName(page) === pageTitle && 'date' in page.properties.Date && page.properties.Date.date?.start === pageDate);
 }
 
-async function createCalendarPage(calendarId: string, repeatSerial: string, repeatId: string, repeatIcon: EmojiRequest | null, repeatClass: string, pageDate: string): Promise<void | CreatePageResponse> {
+async function createCalendarPage(calendarId: string, repeatSerial: string, repeatId: string, repeatIcon: EmojiRequest | null, repeatClass: string | undefined, pageDate: string): Promise<void | CreatePageResponse> {
 	// Construct the parent object for the CreatePageParameters
 	const parent: CreatePageParameters['parent'] = {
 		type: 'database_id',
@@ -214,7 +227,7 @@ async function updateCalendar(parentBlockId?: string): Promise<void> {
 							// Resolve the repeat's name and icon
 							const repeatName = ('title' in repeat.properties.Name) ? resolvePageName(repeat) : 'Unknown Title';
 							const repeatIcon = (repeat.icon !== null && 'emoji' in repeat.icon) ? repeat.icon.emoji : null;
-							const repeatClass = (CONSTANTS.CLASS_PROPERTY_NAME in repeat.properties && 'select' in repeat.properties?.[CONSTANTS.CLASS_PROPERTY_NAME]) ? repeat.properties?.[CONSTANTS.CLASS_PROPERTY_NAME]?.select?.name : null;
+							const repeatClass = getClassTag(repeat);
 
 							// Iterate through each repeat serial
 							Object.entries(CONSTANTS.REPEATS)

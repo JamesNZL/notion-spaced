@@ -102,6 +102,17 @@ async function resolveRepeatsFromBoards(boardIds) {
     // Flatten the repeats array by one level so that all repeats from all boards are concatenated into a single <Page[]> array
     return repeats.flat(1);
 }
+function getClassTag(repeat) {
+    if ('properties' in repeat && CONSTANTS.CLASS_PROPERTY_NAME in repeat.properties) {
+        // Extract the class property from the repeat page
+        const classProperty = repeat.properties[CONSTANTS.CLASS_PROPERTY_NAME];
+        // If the class property is a select property, return its name
+        if ('select' in classProperty)
+            return classProperty.select?.name;
+    }
+    // Return undefined if no tag was found
+    return undefined;
+}
 function calendarHasPage(calendarPages, { pageTitle, pageDate }) {
     return calendarPages.results.some(page => 'properties' in page && resolvePageName(page) === pageTitle && 'date' in page.properties.Date && page.properties.Date.date?.start === pageDate);
 }
@@ -186,7 +197,7 @@ async function updateCalendar(parentBlockId) {
                             // Resolve the repeat's name and icon
                             const repeatName = ('title' in repeat.properties.Name) ? resolvePageName(repeat) : 'Unknown Title';
                             const repeatIcon = (repeat.icon !== null && 'emoji' in repeat.icon) ? repeat.icon.emoji : null;
-                            const repeatClass = (CONSTANTS.CLASS_PROPERTY_NAME in repeat.properties && 'select' in repeat.properties?.[CONSTANTS.CLASS_PROPERTY_NAME]) ? repeat.properties?.[CONSTANTS.CLASS_PROPERTY_NAME]?.select?.name : null;
+                            const repeatClass = getClassTag(repeat);
                             // Iterate through each repeat serial
                             Object.entries(CONSTANTS.REPEATS)
                                 .forEach(([repeatSerial, repeatObject]) => {
