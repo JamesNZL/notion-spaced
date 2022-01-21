@@ -1,5 +1,5 @@
 import { Client, isNotionClientError } from '@notionhq/client';
-import { CreatePageParameters, CreatePageResponse, ListBlockChildrenResponse, QueryDatabaseResponse } from '@notionhq/client/build/src/api-endpoints';
+import { CreatePageParameters, CreatePageResponse, ListBlockChildrenResponse, QueryDatabaseParameters, QueryDatabaseResponse } from '@notionhq/client/build/src/api-endpoints';
 
 import * as dotenv from 'dotenv';
 dotenv.config();
@@ -22,6 +22,7 @@ type Repeats = {
 interface Constants {
 	CALENDAR_TITLE: string;
 	DATE_FORMAT: string;
+	REPEAT_STATUS_PROPERTY_NAME: string;
 	CLASS_PROPERTY_NAME: string;
 	REPEATS: Repeats;
 }
@@ -29,6 +30,7 @@ interface Constants {
 const CONSTANTS: Constants = {
 	CALENDAR_TITLE: 'Repetition Calendar',
 	DATE_FORMAT: 'YYYY-MM-DD',
+	REPEAT_STATUS_PROPERTY_NAME: 'Status',
 	CLASS_PROPERTY_NAME: 'Class',
 	REPEATS: {
 		'1st rep': {
@@ -68,9 +70,9 @@ async function retrieveBlockChildren(blockId: string): Promise<void | ListBlockC
 	}
 }
 
-async function queryDatabase(databaseId: string): Promise<void | QueryDatabaseResponse> {
+async function queryDatabase(databaseId: string, filter?: QueryDatabaseParameters['filter']): Promise<void | QueryDatabaseResponse> {
 	try {
-		return await notion.databases.query({ database_id: databaseId });
+		return await notion.databases.query({ database_id: databaseId, filter });
 	}
 
 	catch (error: unknown) {
@@ -107,8 +109,15 @@ async function resolveRepeatsFromBoards(boardIds: string[]): Promise<QueryDataba
 	const repeats = await Promise.all(
 		// Extract the repeats from each Class Board
 		boardIds.map(async (boardId) => {
-			// Attempt to query the board database
-			const response = await queryDatabase(boardId);
+			// Attempt to query the board database for repeats that are classed as No Status, i.e. have just been created
+			const filterForNoStatus = {
+				property: CONSTANTS.REPEAT_STATUS_PROPERTY_NAME,
+				select: {
+					is_empty: <const>true,
+				},
+			};
+
+			const response = await queryDatabase(boardId, filterForNoStatus);
 
 			// If the boardId is a valid database, return its array of results, otherwise return an empty array
 			return (response?.results) ? response.results : [];
@@ -216,8 +225,32 @@ async function updateCalendar(parentBlockId?: string): Promise<void> {
 				// Resolve all the repeats from all boards into a single <Page[]>
 				const repeats = await resolveRepeatsFromBoards(boardIds);
 
-				// Attempt to query the calendar database
-				const calendarPages = await queryDatabase(calendarId);
+				// Filter only for calendar pages whose names match the resolved repeats
+				const filterForResolvedRepeats = {
+					// Use a logical or to match all resolved names
+					or: repeats.flatMap(repeat => {
+						// Attempt to resolve the name of the repeat page
+						const repeatName = resolvePageName(repeat);
+
+						// If successful, map to a filter object
+						if (repeatName) {
+							return [
+								{
+									property: 'Name',
+									text: {
+										contains: resolvePageName(repeat),
+									},
+								},
+							];
+						}
+
+						// Otherwise, return an empty array to be flattened
+						else return [];
+					}),
+				};
+
+				// Attempt to query the calendar database for existing pages matching the resolved repeats
+				const calendarPages = await queryDatabase(calendarId, filterForResolvedRepeats);
 
 				// Continue if the calendarId is a valid database
 				if (calendarPages?.results) {

@@ -29,6 +29,7 @@ const moment_1 = __importDefault(require("moment"));
 const CONSTANTS = {
     CALENDAR_TITLE: 'Repetition Calendar',
     DATE_FORMAT: 'YYYY-MM-DD',
+    REPEAT_STATUS_PROPERTY_NAME: 'Status',
     CLASS_PROPERTY_NAME: 'Class',
     REPEATS: {
         '1st rep': {
@@ -62,9 +63,9 @@ async function retrieveBlockChildren(blockId) {
         handleError(error);
     }
 }
-async function queryDatabase(databaseId) {
+async function queryDatabase(databaseId, filter) {
     try {
-        return await notion.databases.query({ database_id: databaseId });
+        return await notion.databases.query({ database_id: databaseId, filter });
     }
     catch (error) {
         handleError(error);
@@ -94,8 +95,14 @@ async function resolveRepeatsFromBoards(boardIds) {
     const repeats = await Promise.all(
     // Extract the repeats from each Class Board
     boardIds.map(async (boardId) => {
-        // Attempt to query the board database
-        const response = await queryDatabase(boardId);
+        // Attempt to query the board database for repeats that are classed as No Status, i.e. have just been created
+        const filterForNoStatus = {
+            property: CONSTANTS.REPEAT_STATUS_PROPERTY_NAME,
+            select: {
+                is_empty: true,
+            },
+        };
+        const response = await queryDatabase(boardId, filterForNoStatus);
         // If the boardId is a valid database, return its array of results, otherwise return an empty array
         return (response?.results) ? response.results : [];
     }));
@@ -187,8 +194,30 @@ async function updateCalendar(parentBlockId) {
             if (calendarId && boardIds?.length) {
                 // Resolve all the repeats from all boards into a single <Page[]>
                 const repeats = await resolveRepeatsFromBoards(boardIds);
-                // Attempt to query the calendar database
-                const calendarPages = await queryDatabase(calendarId);
+                // Filter only for calendar pages whose names match the resolved repeats
+                const filterForResolvedRepeats = {
+                    // Use a logical or to match all resolved names
+                    or: repeats.flatMap(repeat => {
+                        // Attempt to resolve the name of the repeat page
+                        const repeatName = resolvePageName(repeat);
+                        // If successful, map to a filter object
+                        if (repeatName) {
+                            return [
+                                {
+                                    property: 'Name',
+                                    text: {
+                                        contains: resolvePageName(repeat),
+                                    },
+                                },
+                            ];
+                        }
+                        // Otherwise, return an empty array to be flattened
+                        else
+                            return [];
+                    }),
+                };
+                // Attempt to query the calendar database for existing pages matching the resolved repeats
+                const calendarPages = await queryDatabase(calendarId, filterForResolvedRepeats);
                 // Continue if the calendarId is a valid database
                 if (calendarPages?.results) {
                     // Iterate through every repeat that was found
